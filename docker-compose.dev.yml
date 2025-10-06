@@ -1,0 +1,110 @@
+version: '3.9'
+
+services:
+  # Base de données PostgreSQL (même config que production)
+  postgres:
+    image: postgres:15-alpine
+    container_name: novasuite-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: novasuite
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - novasuite-dev-network
+
+  # Stockage MinIO (même config que production)
+  minio:
+    image: minio/minio:latest
+    container_name: novasuite-minio-dev
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_dev_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - novasuite-dev-network
+
+  # OnlyOffice Document Server (même config que production)
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: novasuite-onlyoffice-dev
+    restart: unless-stopped
+    environment:
+      - JWT_ENABLED=false
+      - JWT_SECRET=novasuite_jwt_secret
+      - JWT_HEADER=Authorization
+      - JWT_IN_BODY=true
+    volumes:
+      - onlyoffice_dev_data:/var/www/onlyoffice/Data
+      - onlyoffice_dev_logs:/var/log/onlyoffice
+    ports:
+      - "8080:80"
+    networks:
+      - novasuite-dev-network
+    depends_on:
+      - postgres
+
+  # Backend en mode développement (volume monté)
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: novasuite-backend-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: novasuite
+      DB_USER: admin
+      DB_PASSWORD: admin
+      JWT_SECRET: novasuite_jwt_secret_key_2024_secure_token
+      ONLYOFFICE_URL: http://onlyoffice
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: novasuite-files
+      CORS_ORIGIN: http://localhost:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend_dev_uploads:/app/uploads
+    ports:
+      - "5000:5000"
+    networks:
+      - novasuite-dev-network
+    depends_on:
+      - postgres
+      - minio
+      - onlyoffice
+    command: npm run dev
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  minio_dev_data:
+    driver: local
+  onlyoffice_dev_data:
+    driver: local
+  onlyoffice_dev_logs:
+    driver: local
+  backend_dev_uploads:
+    driver: local
+
+networks:
+  novasuite-dev-network:
+    driver: bridge
