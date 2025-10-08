@@ -2,13 +2,15 @@ const express = require('express');
 const { body } = require('express-validator');
 const { authenticateToken } = require('../middleware/auth');
 const {
+  chatWithAssistant,
   generateContent,
   correctText,
   summarizeText,
   generatePresentation,
   generateFormula,
   getContextualHelp,
-  chatWithAssistant
+  getAvailableModels,
+  testConnection
 } = require('../controllers/aiController');
 
 const router = express.Router();
@@ -74,5 +76,9 @@ router.post('/presentation', validatePresentation, generatePresentation);
 router.post('/formula', validateFormula, generateFormula);
 router.post('/help', validateHelp, getContextualHelp);
 router.post('/chat', validateChat, chatWithAssistant);
+
+// Routes utilitaires
+router.get('/models', getAvailableModels);
+router.get('/test', testConnection);
 
 module.exports = router;

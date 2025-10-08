@@ -1,4 +1,55 @@
-const aiService = require('../services/aiService');
+const openRouterService = require('../services/openRouterService');
+
+// Chat avec l'assistant IA (fonction principale)
+const chatWithAssistant = async (req, res, next) => {
+  try {
+    const { message, messages = [], context = '', documentType = 'document' } = req.body;
+
+    if (!message && (!messages || messages.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message ou historique de conversation requis'
+      });
+    }
+
+    // Construire l'historique des messages
+    let conversationMessages = [];
+    
+    if (messages && messages.length > 0) {
+      conversationMessages = messages;
+    }
+    
+    // Ajouter le nouveau message
+    if (message) {
+      conversationMessages.push({
+        role: 'user',
+        content: message
+      });
+    }
+
+    // Ajouter le contexte si fourni
+    if (context) {
+      conversationMessages.unshift({
+        role: 'user',
+        content: `Contexte du document (${documentType}) : ${context}`
+      });
+    }
+
+    const result = await openRouterService.chat(conversationMessages);
+
+    res.json({
+      success: true,
+      data: {
+        response: result.message,
+        model: result.model,
+        usage: result.usage
+      }
+    });
+  } catch (error) {
+    console.error('Chat error:', error);
+    next(error);
+  }
+};
 
 // Génération de contenu
 const generateContent = async (req, res, next) => {
@@ -12,24 +63,31 @@ const generateContent = async (req, res, next) => {
       });
     }
 
-    const result = await aiService.generateContent(prompt, type, options);
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la génération de contenu',
-        error: result.error
-      });
+    let result;
+    switch (type) {
+      case 'letter':
+        result = await openRouterService.generateDocument(prompt, 'letter');
+        break;
+      case 'report':
+        result = await openRouterService.generateDocument(prompt, 'report');
+        break;
+      case 'email':
+        result = await openRouterService.generateDocument(prompt, 'email');
+        break;
+      default:
+        result = await openRouterService.generateDocument(prompt, 'general');
     }
 
     res.json({
       success: true,
       data: {
-        content: result.content,
+        content: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
+    console.error('Content generation error:', error);
     next(error);
   }
 };
@@ -46,25 +104,18 @@ const correctText = async (req, res, next) => {
       });
     }
 
-    const result = await aiService.correctText(text, language);
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la correction',
-        error: result.error
-      });
-    }
+    const result = await openRouterService.correctText(text);
 
     res.json({
       success: true,
       data: {
-        correctedText: result.correctedText,
-        corrections: result.corrections,
+        correctedText: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
+    console.error('Text correction error:', error);
     next(error);
   }
 };
@@ -81,24 +132,31 @@ const summarizeText = async (req, res, next) => {
       });
     }
 
-    const result = await aiService.summarizeText(text, length);
+    const lengthInstructions = {
+      short: 'en 2-3 phrases maximum',
+      medium: 'en un paragraphe de 5-7 phrases',
+      long: 'en 2-3 paragraphes détaillés'
+    };
 
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors du résumé',
-        error: result.error
-      });
-    }
+    const result = await openRouterService.chat([
+      {
+        role: 'user',
+        content: `Résume ce texte ${lengthInstructions[length] || lengthInstructions.medium} en gardant les points essentiels :
+
+${text}`
+      }
+    ]);
 
     res.json({
       success: true,
       data: {
-        summary: result.summary,
+        summary: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
+    console.error('Text summarization error:', error);
     next(error);
   }
 };
@@ -115,29 +173,23 @@ const generatePresentation = async (req, res, next) => {
       });
     }
 
-    const result = await aiService.generatePresentation(topic, slideCount);
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la génération de présentation',
-        error: result.error
-      });
-    }
+    const result = await openRouterService.generatePresentation(topic, slideCount);
 
     res.json({
       success: true,
       data: {
-        presentation: result.presentation,
+        presentation: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
+    console.error('Presentation generation error:', error);
     next(error);
   }
 };
 
-// Génération de formule
+// Génération de formule Excel
 const generateFormula = async (req, res, next) => {
   try {
     const { description, context = '' } = req.body;
@@ -149,27 +201,18 @@ const generateFormula = async (req, res, next) => {
       });
     }
 
-    const result = await aiService.generateFormula(description, context);
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la génération de formule',
-        error: result.error
-      });
-    }
+    const result = await openRouterService.generateExcelFormula(description);
 
     res.json({
       success: true,
       data: {
-        formula: result.formula,
-        explanation: result.explanation,
-        example: result.example,
-        alternatives: result.alternatives,
+        formula: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
+    console.error('Formula generation error:', error);
     next(error);
   }
 };
@@ -186,73 +229,85 @@ const getContextualHelp = async (req, res, next) => {
       });
     }
 
-    const result = await aiService.getContextualHelp(
-      documentType || 'document',
-      content || '',
-      question
-    );
+    const contextMessage = content 
+      ? `Contexte du document (${documentType || 'document'}) : ${content}\n\nQuestion : ${question}`
+      : question;
 
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de l\'aide contextuelle',
-        error: result.error
-      });
-    }
+    const result = await openRouterService.chat([
+      {
+        role: 'user',
+        content: contextMessage
+      }
+    ]);
 
     res.json({
       success: true,
       data: {
-        answer: result.answer,
+        answer: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
+    console.error('Contextual help error:', error);
     next(error);
   }
 };
 
-// Chat avec l'assistant IA
-const chatWithAssistant = async (req, res, next) => {
+// Obtenir les modèles disponibles
+const getAvailableModels = async (req, res, next) => {
   try {
-    const { message, context = '', documentType = 'document' } = req.body;
+    const result = await openRouterService.getAvailableModels();
 
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        message: 'Message requis'
-      });
-    }
+    res.json({
+      success: result.success,
+      data: {
+        models: result.models
+      }
+    });
+  } catch (error) {
+    console.error('Get models error:', error);
+    next(error);
+  }
+};
 
-    // Utiliser l'aide contextuelle pour le chat
-    const result = await aiService.getContextualHelp(documentType, context, message);
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors du chat avec l\'assistant',
-        error: result.error
-      });
-    }
+// Endpoint de test pour vérifier la connexion OpenRouter
+const testConnection = async (req, res, next) => {
+  try {
+    const result = await openRouterService.chat([
+      {
+        role: 'user',
+        content: 'Bonjour, peux-tu me confirmer que tu es bien NovaCopilot et que la connexion fonctionne ?'
+      }
+    ]);
 
     res.json({
       success: true,
       data: {
-        response: result.answer,
+        message: 'Connexion OpenRouter testée avec succès',
+        response: result.message,
+        model: result.model,
         usage: result.usage
       }
     });
   } catch (error) {
-    next(error);
+    console.error('Connection test error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur de connexion OpenRouter',
+      error: error.message
+    });
   }
 };
 
 module.exports = {
+  chatWithAssistant,
   generateContent,
   correctText,
   summarizeText,
   generatePresentation,
   generateFormula,
   getContextualHelp,
-  chatWithAssistant
+  getAvailableModels,
+  testConnection
 };

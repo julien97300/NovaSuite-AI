@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import ChatPanel from './components/ChatPanel-real';
-import apiService from './lib/api-real';
 import './App.css';
 
 function App() {
@@ -12,24 +10,6 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [files, setFiles] = useState([]);
-
-  // Vérifier l'authentification au démarrage
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
-    }
-  }, []);
 
   // Données de démonstration
   const mockDocuments = [
@@ -47,94 +27,41 @@ function App() {
     { id: 6, name: 'Archive_Projet.zip', type: 'archive', size: '8.7 MB', icon: '📦' }
   ];
 
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      alert('Veuillez remplir tous les champs');
-      return;
-    }
-
-    try {
-      const response = await apiService.login(formData.email, formData.password);
-      
-      if (response.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        setUser(response.data.user);
-        setIsAuthenticated(true);
-        alert('Connexion réussie ! Bienvenue dans NovaSuite AI');
-      } else {
-        alert(response.message || 'Erreur de connexion');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      // Fallback en mode démo si l'API n'est pas disponible
-      if (formData.email && formData.password) {
-        setUser({
-          firstName: 'Demo',
-          lastName: 'User',
-          email: formData.email
-        });
-        setIsAuthenticated(true);
-        alert('Mode démo activé - Connexion simulée réussie !');
-      }
-    }
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
-      alert('Veuillez remplir tous les champs');
-      return;
-    }
-
-    try {
-      const response = await apiService.register({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName
+    if (formData.email && formData.password) {
+      setUser({
+        firstName: 'Demo',
+        lastName: 'User',
+        email: formData.email
       });
-      
-      if (response.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        setUser(response.data.user);
-        setIsAuthenticated(true);
-        alert('Inscription réussie ! Bienvenue dans NovaSuite AI');
-      } else {
-        alert(response.message || 'Erreur d\'inscription');
-      }
-    } catch (error) {
-      console.error('Register error:', error);
-      // Fallback en mode démo si l'API n'est pas disponible
-      if (formData.email && formData.password && formData.firstName && formData.lastName) {
-        setUser({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email
-        });
-        setIsAuthenticated(true);
-        alert('Mode démo activé - Inscription simulée réussie !');
-      }
+      setIsAuthenticated(true);
+      alert('Connexion réussie ! Bienvenue dans NovaSuite AI');
+    } else {
+      alert('Veuillez remplir tous les champs');
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await apiService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setIsAuthenticated(false);
-      setUser(null);
-      setCurrentView('dashboard');
-      alert('Déconnexion réussie');
+  const handleRegister = (e) => {
+    e.preventDefault();
+    if (formData.email && formData.password && formData.firstName && formData.lastName) {
+      setUser({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email
+      });
+      setIsAuthenticated(true);
+      alert('Inscription réussie ! Bienvenue dans NovaSuite AI');
+    } else {
+      alert('Veuillez remplir tous les champs');
     }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    setCurrentView('dashboard');
+    alert('Déconnexion réussie');
   };
 
   const handleFileUpload = (e) => {
@@ -627,11 +554,65 @@ function App() {
         </div>
       </div>
 
-      {/* Chat Panel Réel */}
-      <ChatPanel 
-        isOpen={chatOpen} 
-        onClose={() => setChatOpen(false)} 
-      />
+      {/* Chat Panel */}
+      {chatOpen && (
+        <div style={{ position: 'fixed', right: '20px', bottom: '20px', width: '350px', height: '500px', background: 'white', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', zIndex: 1000 }}>
+          <div style={{ padding: '15px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: '20px', marginRight: '8px' }}>🤖</span>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>NovaCopilot</h3>
+            </div>
+            <button
+              onClick={() => setChatOpen(false)}
+              style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div style={{ padding: '15px', height: '380px', overflowY: 'auto' }}>
+            <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
+              <p style={{ fontSize: '14px', margin: 0 }}>
+                👋 Bonjour ! Je suis NovaCopilot, votre assistant IA. Comment puis-je vous aider aujourd'hui ?
+              </p>
+            </div>
+            
+            <div style={{ background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
+              <p style={{ fontSize: '14px', margin: 0, color: '#1e40af' }}>
+                🎯 <strong>Mode Démonstration</strong><br/>
+                En mode production, je peux vous aider à :
+                <br/>• Générer du contenu pour vos documents
+                <br/>• Corriger et améliorer vos textes
+                <br/>• Créer des formules de tableur
+                <br/>• Résumer des documents
+                <br/>• Générer des présentations
+              </p>
+            </div>
+          </div>
+          
+          <div style={{ padding: '15px', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Tapez votre message..."
+                style={{ flex: 1, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    alert('Fonctionnalité de chat simulée - En mode production, NovaCopilot répondrait à votre question !');
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <button
+                onClick={() => alert('Fonctionnalité de chat simulée - En mode production, NovaCopilot répondrait à votre question !')}
+                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                ➤
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chat Toggle Button */}
       {!chatOpen && (

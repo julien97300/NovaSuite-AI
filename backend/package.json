@@ -8,7 +8,12 @@
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["office", "ai", "collaboration", "documents"],
+  "keywords": [
+    "office",
+    "ai",
+    "collaboration",
+    "documents"
+  ],
   "author": "Manus IA",
   "license": "MIT",
   "dependencies": {
