@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import ChatPanel from './components/ChatPanel-real';
+import NotificationSystem from './components/NotificationSystem';
+import ActivityFeed from './components/ActivityFeed';
 import apiService from './lib/api-real';
+import dynamicStore from './lib/dynamicStore';
+import advancedAI from './lib/advancedAI';
 import './App.css';
 
 function App() {
@@ -11,7 +15,17 @@ function App() {
   const [formData, setFormData] = useState({ email: '', password: '', firstName: '', lastName: '' });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
-  const [files, setFiles] = useState([]);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [storeData, setStoreData] = useState(dynamicStore.getData());
+
+  // S'abonner aux changements du store
+  useEffect(() => {
+    const unsubscribe = dynamicStore.subscribe((data) => {
+      setStoreData(data);
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Vérifier l'authentification au démarrage
   useEffect(() => {
@@ -23,6 +37,8 @@ function App() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
+        // Mettre à jour le store avec l'utilisateur
+        dynamicStore.updateData({ user: parsedUser });
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
@@ -31,21 +47,11 @@ function App() {
     }
   }, []);
 
-  // Données de démonstration
-  const mockDocuments = [
-    { id: 1, title: 'Rapport Mensuel - Octobre 2024', type: 'document', size: '245 KB', date: '06/10/2024' },
-    { id: 2, title: 'Budget Prévisionnel 2025', type: 'spreadsheet', size: '512 KB', date: '05/10/2024' },
-    { id: 3, title: 'Présentation Stratégie Q4', type: 'presentation', size: '1.2 MB', date: '04/10/2024' }
-  ];
-
-  const mockAttachments = [
-    { id: 1, name: 'Présentation_Q4.pptx', type: 'presentation', size: '2.1 MB', icon: '🎯' },
-    { id: 2, name: 'Logo_Entreprise.png', type: 'image', size: '512 KB', icon: '🖼️' },
-    { id: 3, name: 'Rapport_Financier.pdf', type: 'document', size: '1.2 MB', icon: '📄' },
-    { id: 4, name: 'Video_Formation.mp4', type: 'video', size: '15.3 MB', icon: '🎬' },
-    { id: 5, name: 'Audio_Reunion.mp3', type: 'audio', size: '5.1 MB', icon: '🎵' },
-    { id: 6, name: 'Archive_Projet.zip', type: 'archive', size: '8.7 MB', icon: '📦' }
-  ];
+  // Données dynamiques du store
+  const documents = storeData.documents || [];
+  const attachments = storeData.attachments || [];
+  const activities = storeData.activities || [];
+  const stats = storeData.stats || {};
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -139,25 +145,41 @@ function App() {
 
   const handleFileUpload = (e) => {
     const uploadedFiles = Array.from(e.target.files);
-    const newFiles = uploadedFiles.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: (file.size / 1024).toFixed(1) + ' KB',
-      type: file.type.includes('image') ? 'image' : 
-            file.type.includes('video') ? 'video' :
-            file.type.includes('audio') ? 'audio' : 'document',
-      icon: file.type.includes('image') ? '🖼️' : 
-            file.type.includes('video') ? '🎬' :
-            file.type.includes('audio') ? '🎵' : '📄'
-    }));
-    setFiles([...files, ...newFiles]);
-    alert(`${uploadedFiles.length} fichier(s) ajouté(s) avec succès !`);
+    uploadedFiles.forEach(file => {
+      // Ajouter le fichier au store dynamique
+      const newFile = dynamicStore.addFile(file);
+      console.log('Fichier uploadé:', newFile);
+    });
+    
+    // Notification de succès
+    dynamicStore.addNotification('success', 'Fichiers uploadés', `${uploadedFiles.length} fichier(s) ajouté(s) avec succès`);
   };
 
-  const deleteFile = (fileId) => {
-    setFiles(files.filter(f => f.id !== fileId));
-    alert('Fichier supprimé');
+  const handleCreateDocument = (type, title) => {
+    const newDoc = dynamicStore.addDocument({
+      title: title || `Nouveau ${type}`,
+      type: type,
+      content: `Contenu du ${type}...`,
+      size: '0 KB'
+    });
+    
+    dynamicStore.addNotification('success', 'Document créé', `"${newDoc.title}" a été créé`);
+    setCurrentView('documents');
   };
+
+  const handleDeleteDocument = (id) => {
+    if (dynamicStore.deleteDocument(id)) {
+      dynamicStore.addNotification('info', 'Document supprimé', 'Le document a été supprimé');
+    }
+  };
+
+  const handleDeleteFile = (id) => {
+    if (dynamicStore.deleteFile(id)) {
+      dynamicStore.addNotification('info', 'Fichier supprimé', 'Le fichier a été supprimé');
+    }
+  };
+
+
 
   // Interface de connexion/inscription
   if (!isAuthenticated) {
@@ -382,6 +404,30 @@ function App() {
           </button>
         )}
 
+        {/* Boutons d'action flottants */}
+        <div style={{ position: 'fixed', top: '70px', right: '20px', display: 'flex', gap: '10px', zIndex: 100 }}>
+          <NotificationSystem store={dynamicStore} />
+          <button
+            onClick={() => setActivityOpen(true)}
+            style={{
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              cursor: 'pointer',
+              fontSize: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+            title="Activité en temps réel"
+          >
+            📊
+          </button>
+        </div>
+
         <div style={{ padding: '20px' }}>
           {/* Dashboard */}
           {currentView === 'dashboard' && (
@@ -391,17 +437,39 @@ function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                   <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>📄 Documents récents</h3>
-                  {mockDocuments.slice(0, 3).map(doc => (
+                  {documents.slice(0, 3).map(doc => (
                     <div key={doc.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <span style={{ marginRight: '8px' }}>
                         {doc.type === 'document' ? '📄' : doc.type === 'spreadsheet' ? '📊' : '🎯'}
                       </span>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{doc.title}</p>
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{doc.size} • {doc.date}</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{doc.size} • {new Date(doc.date).toLocaleDateString('fr-FR')}</p>
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>📊 Statistiques</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#f0f9ff', borderRadius: '6px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#0369a1' }}>{stats.documentsCreated || 0}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Documents</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#f0fdf4', borderRadius: '6px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#16a34a' }}>{stats.aiInteractions || 0}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>IA Interactions</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#fef3c7', borderRadius: '6px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#d97706' }}>{stats.filesUploaded || 0}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Fichiers</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#fdf2f8', borderRadius: '6px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#be185d' }}>{stats.collaborations || 0}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Collaborations</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -409,12 +477,20 @@ function App() {
                   <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '15px' }}>
                     NovaCopilot est prêt à vous aider avec vos documents
                   </p>
-                  <button
-                    onClick={() => setChatOpen(true)}
-                    style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
-                  >
-                    💬 Ouvrir le chat
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => setChatOpen(true)}
+                      style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}
+                    >
+                      Chat IA
+                    </button>
+                    <button
+                      onClick={() => handleCreateDocument('document', 'Nouveau Document')}
+                      style={{ background: '#f3f4f6', color: '#374151', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      📄 Document
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -545,7 +621,7 @@ function App() {
 
               {/* Files List */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-                {[...mockAttachments, ...files].map(file => (
+                {attachments.map(file => (
                   <div key={file.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                       <span style={{ fontSize: '24px', marginRight: '10px' }}>{file.icon}</span>
@@ -631,6 +707,13 @@ function App() {
       <ChatPanel 
         isOpen={chatOpen} 
         onClose={() => setChatOpen(false)} 
+      />
+
+      {/* Activity Feed */}
+      <ActivityFeed 
+        store={dynamicStore}
+        isVisible={activityOpen}
+        onClose={() => setActivityOpen(false)}
       />
 
       {/* Chat Toggle Button */}
