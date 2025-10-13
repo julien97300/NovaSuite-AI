@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import ChatPanel from './components/ChatPanel-real';
 import NotificationSystem from './components/NotificationSystem';
 import ActivityFeed from './components/ActivityFeed';
+import ProfessionalAuth from './components/ProfessionalAuth';
+import ProfessionalHeader from './components/ProfessionalHeader';
 import apiService from './lib/api-real';
 import dynamicStore from './lib/dynamicStore';
 import advancedAI from './lib/advancedAI';
@@ -184,127 +186,27 @@ function App() {
   // Interface de connexion/inscription
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        {/* Bannière de démonstration */}
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: '#2563eb', color: 'white', padding: '10px', textAlign: 'center', zIndex: 1000 }}>
-          🎯 <strong>Mode Démonstration NovaSuite AI</strong> - Utilisez n'importe quel email pour vous connecter
-        </div>
-
-        <div style={{ background: 'white', borderRadius: '12px', padding: '40px', maxWidth: '400px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', marginTop: '60px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <div style={{ width: '60px', height: '60px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '24px' }}>
-              ✨
-            </div>
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-              NovaSuite AI
-            </h1>
-            <p style={{ color: '#6b7280', marginTop: '8px' }}>
-              Suite bureautique intelligente
-            </p>
-          </div>
-
-          {/* Bannière de démonstration */}
-          <div style={{ background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)', border: '1px solid #93c5fd', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ marginRight: '8px' }}>✨</span>
-              <strong style={{ color: '#1e40af', fontSize: '14px' }}>Mode Démonstration</strong>
-            </div>
-            <p style={{ fontSize: '12px', color: '#1e40af', margin: 0 }}>
-              Utilisez n'importe quel email et mot de passe pour tester l'interface !
-            </p>
-          </div>
-
-          <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} style={{ marginBottom: '20px' }}>
-            {authMode === 'register' && (
-              <>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '5px' }}>
-                    Prénom
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                    style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                    placeholder="Votre prénom"
-                  />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '5px' }}>
-                    Nom
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                    style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                    placeholder="Votre nom"
-                  />
-                </div>
-              </>
-            )}
-            
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '5px' }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                placeholder="votre@email.com"
-              />
-            </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '5px' }}>
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
-                placeholder="••••••••"
-              />
-            </div>
-            
-            <button
-              type="submit"
-              style={{ width: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '12px', border: 'none', borderRadius: '6px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
-            >
-              {authMode === 'login' ? 'Se connecter' : 'S\'inscrire'}
-            </button>
-          </form>
-
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              {authMode === 'login' ? 'Pas encore de compte ?' : 'Déjà un compte ?'}{' '}
-              <button
-                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                style={{ color: '#667eea', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer' }}
-              >
-                {authMode === 'login' ? 'S\'inscrire' : 'Se connecter'}
-              </button>
-            </p>
-          </div>
-        </div>
-      </div>
+      <ProfessionalAuth
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        formData={formData}
+        setFormData={setFormData}
+      />
     );
   }
+
+
 
   // Interface principale
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex' }}>
-      {/* Bannière de démonstration */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)', color: 'white', padding: '8px', textAlign: 'center', zIndex: 1000, fontSize: '14px' }}>
-        ✨ <strong>NovaSuite AI - Démonstration Interactive</strong> • Interface complète fonctionnelle • Toutes les fonctionnalités sont simulées
-      </div>
+
 
       {/* Sidebar */}
       {sidebarOpen && (
-        <div style={{ width: '280px', background: 'white', borderRight: '1px solid #e5e7eb', height: '100vh', position: 'fixed', left: 0, top: 0, paddingTop: '50px', zIndex: 100 }}>
+        <div style={{ width: '280px', background: 'white', borderRight: '1px solid #e5e7eb', height: '100vh', position: 'fixed', left: 0, top: 0, paddingTop: '0px', zIndex: 100 }}>
           {/* Header */}
           <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -393,42 +295,28 @@ function App() {
       )}
 
       {/* Main Content */}
-      <div style={{ flex: 1, marginLeft: sidebarOpen ? '280px' : '0', paddingTop: '50px', transition: 'margin-left 0.3s' }}>
+      <div style={{ flex: 1, marginLeft: sidebarOpen ? '280px' : '0', paddingTop: '0px', transition: 'margin-left 0.3s' }}>
         {/* Toggle Sidebar Button */}
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
-            style={{ position: 'fixed', left: '20px', top: '70px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '8px', cursor: 'pointer', zIndex: 100 }}
+            style={{ position: 'fixed', left: '20px', top: '20px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '8px', cursor: 'pointer', zIndex: 100 }}
           >
             →
           </button>
         )}
 
-        {/* Boutons d'action flottants */}
-        <div style={{ position: 'fixed', top: '70px', right: '20px', display: 'flex', gap: '10px', zIndex: 100 }}>
-          <NotificationSystem store={dynamicStore} />
-          <button
-            onClick={() => setActivityOpen(true)}
-            style={{
-              background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '50%',
-              width: '44px',
-              height: '44px',
-              cursor: 'pointer',
-              fontSize: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}
-            title="Activité en temps réel"
-          >
-            📊
-          </button>
-        </div>
+        {/* Header Professionnel */}
+        <ProfessionalHeader
+          user={user}
+          onLogout={handleLogout}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          dynamicStore={dynamicStore}
+          setActivityOpen={setActivityOpen}
+        />
 
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '80px 20px 20px 20px' }}>
           {/* Dashboard */}
           {currentView === 'dashboard' && (
             <div>
